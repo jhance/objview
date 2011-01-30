@@ -15,9 +15,19 @@ struct obj_load_data {
 /* allocates room for 4 more of an object at a time */
 static void buf_expand(void **buf, size_t unit, size_t *cs, size_t rs) {
     if(rs > *cs) {
-        rs += sizeof(unit) * 4;
-        *buf = realloc(*buf, rs);
+        rs += 4;
+        *buf = realloc(*buf, rs * unit);
         *cs = rs; /* update the current size */
+    }
+}
+
+/* expands a parallel array */
+static void buf_expand2(void **buf1, void **buf2, size_t unit1, size_t unit2, size_t *cs, size_t rs) {
+    if(rs > *cs) {
+        rs += 4;
+        *buf1 = realloc(*buf1, rs * unit1);
+        *buf2 = realloc(*buf2, rs * unit2);
+        *cs = rs;
     }
 }
 
@@ -42,7 +52,7 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
         }
     }
     else if(l[0] == 'f') {
-        l++;
+        l+=2;
 
         struct face f;
         f.num_vertices = 0;
@@ -62,10 +72,14 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
             
             f.num_vertices++;
             
-            buf_expand(&f.coord_indices, sizeof(int), &bufsize_vertices, f.num_vertices);
-            buf_expand(&f.uv_indices, sizeof(int), &bufsize_vertices, f.num_vertices);
-            f.coord_indices[bufsize_vertices - 1] = coordIndex;
-            f.uv_indices[bufsize_vertices - 1] = uvIndex;
+            buf_expand2(&f.coord_indices, &f.uv_indices, sizeof(int), sizeof(int), &bufsize_vertices, f.num_vertices);
+            f.coord_indices[f.num_vertices - 1] = coordIndex;
+            f.uv_indices[f.num_vertices - 1] = uvIndex;
+
+            while(*l != ' ' && *l != '\n' && l) {
+                l++;
+            }
+            l++;
         }
 
         m->num_faces++;
@@ -76,7 +90,7 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
 
 struct obj_model *load_model(char *filepath) {
     FILE *fin = fopen(filepath, "r");
-    char *line;
+    char *line = xmalloc(255);
 
     struct obj_load_data ld; 
     ld.bufsize_coords = 0;
@@ -87,11 +101,11 @@ struct obj_model *load_model(char *filepath) {
     model->num_coords = 0;
     model->num_uvs = 0;
     model->num_faces = 0;
+    model->coords = NULL;
+    model->uvs = NULL;
+    model->faces = NULL;
 
-    while(1) {
-        if(!fscanf(fin, "%s\n", line)) {
-            break;
-        }
+    while(line = fgets(line, 255, fin)) {
         /* empty line */
         if(strlen(line) == 0) {
             continue;
@@ -101,6 +115,8 @@ struct obj_model *load_model(char *filepath) {
         if(line[0] == '#') {
             continue;
         }
+
+        printf("Parse line: %s", line);
 
         parse_line(line, &ld, model);
     }

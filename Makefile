@@ -11,7 +11,8 @@ modelviewer: $(OBJECTS)
 
 main.o: main.c objload.h xmalloc.h
 objload.o: objload.c objload.h xmalloc.h
+xmalloc.o: xmalloc.h
 
 %.o: %.c
 	@echo "    CC $<"
-	@$(CC) $?
+	@$(CC) $<
