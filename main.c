@@ -49,6 +49,22 @@ void rotate(int t) {
 }
 
 int main(int argc, char **argv) {
+    if(argc < 2) {
+        fprintf(stderr, "Error: Not enough args\n");
+        return 1;
+    }
+    char *dir = argv[1];
+    char *fname;
+
+    if(argc == 2) {
+        fname = xmalloc(strlen(dir) + 5);
+        strcpy(fname, dir);
+        strcat(fname, ".obj");
+    }
+    else {
+        fname = argv[2];
+    }
+
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(400, 400);
@@ -60,7 +76,7 @@ int main(int argc, char **argv) {
     glutKeyboardFunc(handleKeypress);
     glutReshapeFunc(handleResize);
 
-    cube = load_model("cube", "cube.obj");
+    cube = load_model(dir, fname);
 
     glutTimerFunc(10, rotate, 10);
 

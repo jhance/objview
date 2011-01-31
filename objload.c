@@ -175,8 +175,6 @@ struct obj_model *load_model(char *directory, char *rfilepath) {
             continue;
         }
 
-        printf("Parse line: %s", line);
-
         parse_line(line, &ld, model);
     }
 
