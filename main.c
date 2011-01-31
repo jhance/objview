@@ -7,6 +7,8 @@
 
 static struct obj_model *cube;
 
+static float rotation = 0;
+
 void handleKeypress(unsigned char key, int x, int y) {
     if(key == 27)
         exit(0);
@@ -14,6 +16,7 @@ void handleKeypress(unsigned char key, int x, int y) {
 
 void initRendering(void) {
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_2D);
 }
 
 void handleResize(int w, int h) {
@@ -28,18 +31,21 @@ void drawScene() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-/*
-    glBegin(GL_QUADS);
-    glVertex3f(-0.7f, -1.5f, -5.0f);
-    glVertex3f(0.7f, -1.5f, -5.0f);
-    glVertex3f(0.4f, -0.5f, -5.0f);
-    glVertex3f(-0.4f, -0.5f, -5.0f);
-    glEnd();
-    */
 
+    glPushMatrix();
+    glTranslatef(0, 0.0f, -5.0f);
+    glRotatef(rotation, 1, 1, 1);
     draw_model(cube);
+    glPopMatrix();
 
     glutSwapBuffers();
+}
+
+void rotate(int t) {
+    rotation += 0.5f;
+    drawScene();
+
+    glutTimerFunc(t, rotate, t);
 }
 
 int main(int argc, char **argv) {
@@ -54,7 +60,9 @@ int main(int argc, char **argv) {
     glutKeyboardFunc(handleKeypress);
     glutReshapeFunc(handleResize);
 
-    cube = load_model("cube/cube.obj");
+    cube = load_model("cube", "cube.obj");
+
+    glutTimerFunc(10, rotate, 10);
 
     glutMainLoop();
 
