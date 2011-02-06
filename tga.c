@@ -1,14 +1,16 @@
-#include "tga.h"
-#include "xmalloc.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <GL/glut.h>
+
+#include "tga.h"
+#include "xmalloc.h"
 
 static struct tga_image load_tga(char *filepath) {
     FILE *fin = fopen(filepath, "rb");
-
     struct tga_image t;
+    size_t image_size;
 
     fread(&t.image_id_length, sizeof(uint8_t), 1, fin);
     fread(&t.color_map_type, sizeof(uint8_t), 1, fin);
@@ -46,7 +48,7 @@ static struct tga_image load_tga(char *filepath) {
         }
     }
 
-    size_t image_size = t.width * t.height;
+    image_size = t.width * t.height;
     t.image = xmalloc(sizeof(struct tga_pixel) * image_size);
 
     if(!t.color_map_type) {
@@ -80,13 +82,11 @@ static struct tga_image load_tga(char *filepath) {
     return t;
 }
 
-static void free_texture(struct tga_image t) {
-    free(t.image);
-    free(t.image_id);
-}
-
 GLuint load_tga_texture(char *filename) {
     GLuint texture;
+    struct tga_image t;
+    uint8_t *data;
+    int i;
 
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -96,9 +96,8 @@ GLuint load_tga_texture(char *filename) {
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-    struct tga_image t = load_tga(filename);
-    uint8_t *data = xmalloc(t.width * t.height * 3);
-    int i;
+    t = load_tga(filename);
+    data = xmalloc(t.width * t.height * 3);
     for(i = 0; i < t.width * t.height; i++) {
         int j = 3 * i;
         data[j++] = t.image[i].r;

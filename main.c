@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <GL/glut.h>
 
+#include "xmalloc.h"
 #include "objload.h"
 
 static struct obj_model *cube;
@@ -49,12 +51,13 @@ void rotate(int t) {
 }
 
 int main(int argc, char **argv) {
+    char *dir, *fname;
+
     if(argc < 2) {
         fprintf(stderr, "Error: Not enough args\n");
         return 1;
     }
-    char *dir = argv[1];
-    char *fname;
+    dir = argv[1];
 
     if(argc == 2) {
         fname = xmalloc(strlen(dir) + 5);

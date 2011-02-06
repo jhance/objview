@@ -1,4 +1,4 @@
-CC=$(CROSS)gcc -c -g $(DEFINES)
+CC=$(CROSS)gcc -c -g -Wall -Werror -ansi -pedantic $(DEFINES)
 GLLIBS=-lglut -lGLU -lGL
 CCLD=$(CROSS)gcc
 BIN=modelviewer

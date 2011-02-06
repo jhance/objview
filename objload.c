@@ -21,53 +21,14 @@ struct obj_load_data {
 };
 
 /* allocates room for 4 more of an object at a time */
-static void buf_expand(void **buf, size_t unit, size_t *cs, size_t rs) {
+void *buf_expand(void *buf, size_t unit, size_t *cs, size_t rs) {
     if(rs > *cs) {
         rs += 4;
-        *buf = realloc(*buf, rs * unit);
+        buf = realloc(buf, rs * unit);
         *cs = rs; /* update the current size */
     }
-}
 
-/* expands a parallel array */
-static void buf_expand2(void **buf1, void **buf2, size_t unit1, size_t unit2, size_t *cs, size_t rs) {
-    if(rs > *cs) {
-        rs += 4;
-        *buf1 = realloc(*buf1, rs * unit1);
-        *buf2 = realloc(*buf2, rs * unit2);
-        *cs = rs;
-    }
-}
-
-static GLuint load_raw_texture(const char *filename) {
-    GLuint texture;
-    int width, height;
-    char *data;
-    FILE *fin;
-
-    fin = fopen(filename, "rb");
-    if(fin == NULL) return 0;
-
-    width = 512;
-    height = 512;
-    data = xmalloc(width * height * 3);
-
-    fread(data, width * height * 3, 1, fin);
-    fclose(fin);
-
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB, GL_UNSIGNED_BYTE, data);
-
-    free(data);
-
-    return texture;
+    return buf;
 }
 
 /* loads a line of data into the ld and m */
@@ -77,7 +38,8 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
             sscanf(l, "vt %f %f", &vuv.u, &vuv.v);
 
             m->num_uvs++;
-            buf_expand(&m->uvs, sizeof(struct vertex_uv), &ld->bufsize_uvs, m->num_uvs);
+            m->uvs = buf_expand(m->uvs, sizeof(struct vertex_uv),
+                    &ld->bufsize_uvs, m->num_uvs);
             m->uvs[m->num_uvs - 1] = vuv;
         }
         else {
@@ -85,20 +47,21 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
             sscanf(l, "v %f %f %f", &vc.x, &vc.y, &vc.z);
        
             m->num_coords++;
-            buf_expand(&m->coords, sizeof(struct vertex_coord), &ld->bufsize_coords, m->num_coords);
+            m->coords = buf_expand(m->coords, sizeof(struct vertex_coord),
+                    &ld->bufsize_coords, m->num_coords);
+
             m->coords[m->num_coords - 1] = vc;
         }
     }
     else if(l[0] == 'f') {
+        struct face f;
+        size_t bufsize_vertices = 0;
+
         l+=2;
 
-        struct face f;
         f.num_vertices = 0;
-        f.coord_indices = NULL;
-        f.uv_indices = NULL;
+        f.indices = NULL;
         f.texture_id = ld->cur_texture;
-
-        size_t bufsize_vertices = 0;
 
         while(1) {
             int coordIndex;
@@ -111,11 +74,13 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
             
             f.num_vertices++;
             
-            buf_expand2(&f.coord_indices, &f.uv_indices, sizeof(int), sizeof(int), &bufsize_vertices, f.num_vertices);
+            f.indices = 
+                buf_expand(f.indices, sizeof(struct vertex_index),
+                        &bufsize_vertices, f.num_vertices);
 
             /* obj format indexes based on 1, we index based on 0 */
-            f.coord_indices[f.num_vertices - 1] = coordIndex - 1;
-            f.uv_indices[f.num_vertices - 1] = uvIndex - 1;
+            f.indices[f.num_vertices - 1].coord = coordIndex - 1;
+            f.indices[f.num_vertices - 1].uv = uvIndex - 1;
 
             while(*l != ' ' && *l != '\n' && l) {
                 l++;
@@ -124,7 +89,8 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
         }
 
         m->num_faces++;
-        buf_expand(&m->faces, sizeof(struct face), &ld->bufsize_faces, m->num_faces);
+        m->faces = buf_expand(m->faces, sizeof(struct face),
+                &ld->bufsize_faces, m->num_faces);
         m->faces[m->num_faces - 1] = f;
     }
     else if (strlen(l) >= 6) {
@@ -141,22 +107,28 @@ static void parse_line(char *l, struct obj_load_data *ld, struct obj_model *m) {
 }
 
 struct obj_model *load_model(char *directory, char *rfilepath) {
+    char *filepath;
+    FILE *fin;
+    char *line;
+    struct obj_load_data ld;
+    struct obj_model *model;
+    
     /* remember the null byte! */
-    char *filepath = xmalloc(strlen(directory) + strlen(rfilepath) + 2);
+    filepath = xmalloc(strlen(directory) + strlen(rfilepath) + 2);
     strcpy(filepath, directory);
     strcat(filepath, "/");
     strcat(filepath, rfilepath);
-    FILE *fin = fopen(filepath, "r");
-    char *line = xmalloc(255);
+    fin = fopen(filepath, "r");
 
-    struct obj_load_data ld; 
+    line = xmalloc(255);
+
     ld.bufsize_coords = 0;
     ld.bufsize_uvs = 0;
     ld.bufsize_faces = 0;
     ld.material_table = hash_init(10);
     ld.directory = directory;
     
-    struct obj_model *model = xmalloc(sizeof(struct obj_model));
+    model = xmalloc(sizeof(struct obj_model));
     model->num_coords = 0;
     model->num_uvs = 0;
     model->num_faces = 0;
@@ -164,7 +136,7 @@ struct obj_model *load_model(char *directory, char *rfilepath) {
     model->uvs = NULL;
     model->faces = NULL;
 
-    while(line = fgets(line, 255, fin)) {
+    while((line = fgets(line, 255, fin))) {
         /* empty line */
         if(strlen(line) == 0) {
             continue;
@@ -184,14 +156,15 @@ struct obj_model *load_model(char *directory, char *rfilepath) {
 void draw_model(struct obj_model *model) {
     int i;
     for(i = 0; i < model->num_faces; i++) {
+        int j;
         struct face f = model->faces[i];
+
         glBindTexture(GL_TEXTURE_2D, f.texture_id);
         glBegin(GL_POLYGON);
 
-        int j;
         for(j = 0; j < f.num_vertices; j++) {
-            struct vertex_coord coord = model->coords[f.coord_indices[j]];
-            struct vertex_uv uv = model->uvs[f.uv_indices[j]];
+            struct vertex_coord coord = model->coords[f.indices[j].coord];
+            struct vertex_uv uv = model->uvs[f.indices[j].uv];
 
             glTexCoord2d(uv.u, uv.v);
             glVertex3f(coord.x, coord.y, coord.z);

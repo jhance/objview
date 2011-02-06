@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <GL/glut.h>
 
+struct vertex_index {
+    int coord;
+    int uv;
+};
+
 struct vertex_coord {
     float x;
     float y;
@@ -17,8 +22,7 @@ struct vertex_uv {
 
 struct face {
     size_t num_vertices;
-    int *coord_indices;
-    int *uv_indices;
+    struct vertex_index *indices;
     GLuint texture_id;
 };
 
@@ -31,7 +35,7 @@ struct obj_model {
     struct face *faces;
 };
 
-struct obj_model *load_module(char *path, char *tpath);
+struct obj_model *load_model(char *path, char *tpath);
 void draw_model(struct obj_model *model);
 
 #endif
