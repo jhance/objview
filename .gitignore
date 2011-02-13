@@ -1,2 +1,4 @@
 *.o
 /modelviewer
+/.d
+/lib/libobjview.a

@@ -4,8 +4,8 @@
 #include <string.h>
 #include <GL/glut.h>
 
-#include "tga.h"
-#include "xmalloc.h"
+#include <tga.h>
+#include <xmalloc.h>
 
 static struct tga_image load_tga(char *filepath) {
     FILE *fin = fopen(filepath, "rb");

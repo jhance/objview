@@ -4,8 +4,8 @@
 
 #include <GL/glut.h>
 
-#include "xmalloc.h"
-#include "objload.h"
+#include <xmalloc.h>
+#include <objload.h>
 
 static struct obj_model *cube;
 

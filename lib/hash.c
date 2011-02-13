@@ -1,9 +1,9 @@
 #include <string.h>
 #include <GL/glut.h>
 
-#include "tga.h"
-#include "hash.h"
-#include "xmalloc.h"
+#include <tga.h>
+#include <hash.h>
+#include <xmalloc.h>
 
 static unsigned int hash_alg(size_t size, char *k) {
     unsigned int h = 0;

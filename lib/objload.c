@@ -1,11 +1,12 @@
-#include "objload.h"
-#include "xmalloc.h"
-#include "tga.h"
-#include "hash.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <GL/glut.h>
+
+#include <objload.h>
+#include <xmalloc.h>
+#include <tga.h>
+#include <hash.h>
 
 struct obj_load_data {
     /* struct obj_model load data */
